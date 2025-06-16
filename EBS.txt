@@ -51,7 +51,7 @@ After reboot:
 sudo su -
 cd /data
 ls -l                     # Verify files exist
-
+###############################################################################################################################################
 🌍 Part 2: Copy EBS Snapshot to Another Region (Cross-Region Transfer)
 
 1️⃣ Create Snapshot from Data Volume
