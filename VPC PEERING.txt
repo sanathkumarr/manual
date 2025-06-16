@@ -1,0 +1,148 @@
+
+AWS VPC SETUP WITH PUBLIC & PRIVATE INSTANCES, NAT GATEWAY, CROSS-REGION PEERING
+
+🔧 STEP 1: CREATE A VPC
+- Go to AWS Console → VPC → Your VPCs → Create VPC
+  - Name: MyVPC
+  - IPv4 CIDR block: 10.0.0.0/16
+  - Leave all other settings default
+  - Click Create VPC
+
+🌐 STEP 2: CREATE SUBNETS
+2.1 Public Subnet
+- Name: PublicSubnet
+- VPC: MyVPC
+- AZ: us-east-1a
+- CIDR: 10.0.1.0/24
+
+2.2 Private Subnet
+- Name: PrivateSubnet
+- VPC: MyVPC
+- AZ: us-east-1b
+- CIDR: 10.0.2.0/24
+
+🌍 STEP 3: INTERNET GATEWAY
+- Go to VPC → Internet Gateways → Create IGW
+  - Name: MyIGW
+  - After creation → Attach to MyVPC
+
+🔁 STEP 4: PUBLIC ROUTE TABLE
+- VPC → Route Tables → Create Route Table
+  - Name: PublicRouteTable
+  - VPC: MyVPC
+- Edit Routes:
+  - Destination: 0.0.0.0/0
+  - Target: Internet Gateway (MyIGW)
+- Subnet Association → Associate with PublicSubnet
+
+📡 STEP 5: ENABLE PUBLIC IP FOR PUBLIC SUBNET
+- VPC → Subnets → Select PublicSubnet
+  - Actions → Modify auto-assign IP → Enable
+
+🔐 STEP 6: LAUNCH EC2 INSTANCES
+Public EC2
+- Name: public
+- Network: MyVPC → PublicSubnet
+- Auto-assign Public IP: ENABLED
+- Security Group: vpc-pub
+  - Inbound: SSH (22) from MyIP, HTTP (80) from 0.0.0.0/0
+
+Private EC2
+- Name: private
+- Network: MyVPC → PrivateSubnet
+- Auto-assign Public IP: DISABLED
+- Security Group: vpc-prv
+  - Inbound: SSH (22) from PublicSubnet CIDR or vpc-pub SG
+
+🌐 STEP 7: NAT GATEWAY SETUP
+7.1 Allocate Elastic IP
+- EC2 → Elastic IPs → Allocate
+
+7.2 Create NAT Gateway
+- VPC → NAT Gateways → Create
+  - Subnet: PublicSubnet
+  - Elastic IP: previously allocated
+
+🔄 STEP 8: PRIVATE ROUTE TABLE
+- Route Tables → Create
+  - Name: PrivateRouteTable
+  - VPC: MyVPC
+- Routes:
+  - Destination: 0.0.0.0/0
+  - Target: NAT Gateway
+- Subnet Associations: PrivateSubnet
+
+🌐 SETUP APACHE ON PUBLIC INSTANCE
+- SSH into Public EC2
+
+sudo su -
+yum install httpd -y
+systemctl enable httpd
+systemctl start httpd
+cd /var/www/html
+vim index.html  # Add sample content
+
+
+* Copy Public IP and check in browser
+* Ensure HTTP port is allowed in inbound rules
+
+🔐 CONNECT PRIVATE INSTANCE FROM PUBLIC
+
+
+vim sanath.pem
+# Paste private key
+chmod 400 sanath.pem
+ssh -i sanath.pem ec2-user@<private-ec2-private-ip>
+
+
+* Once inside:
+
+sudo su -
+ping google.com  # Should work via NAT
+
+
+🚀 SAME STEPS IN ANOTHER REGION (e.g., us-east-2)
+Repeat Steps 1 to 8 for another region with same structure.
+
+🛠️ ENABLE ROOT LOGIN (Optional)
+
+
+passwd root
+vim /etc/ssh/sshd_config
+# Set: PermitRootLogin yes
+systemctl enable sshd
+systemctl start sshd
+systemctl restart sshd
+
+
+📁 COPY FILES BETWEEN REGIONS
+
+* Create file on instance1:
+
+vim index.txt
+
+
+* Use SCP to copy:
+
+
+scp index.txt root@<destination-ip>:/tmp
+
+
+🌉 CREATE VPC PEERING BETWEEN REGIONS
+
+1. In VPC A → Peering → Create
+
+   * Peer Region: <region>
+   * Peer VPC ID: VPC in other region
+
+2. In VPC B → Accept Request
+
+3. Update Route Tables:
+
+   * Public & Private Route Tables in both regions:
+
+     * Destination: other VPC's CIDR block
+     * Target: Peering Connection
+
+Now instances across regions can communicate using private IPs.
+

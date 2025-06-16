@@ -1,0 +1,89 @@
+
+📘 EC2 + EBS Volume Management and Snapshot Replication Across Regions
+
+🧩 Part 1: Create EC2 and Attach EBS Volume in Same Region
+
+1️⃣ Launch an EC2 Instance
+- Go to AWS EC2 Console.
+- Choose a region (e.g., us-east-1 – N. Virginia).
+- Launch an instance (e.g., Amazon Linux 2, t2.micro).
+- Select key pair and security group (enable SSH port 22).
+
+2️⃣ Create and Attach a New EBS Volume
+- Go to Elastic Block Store → Volumes.
+- Click Create Volume:
+  - Size: e.g., 8 GiB
+  - Availability Zone: Must match EC2 instance’s AZ (e.g., us-east-1a)
+- After creation, click Actions → Attach Volume.
+  - Select your instance.
+  - Device: /dev/xvdb (it will show as /dev/nvme1n1 or /dev/xvdb in Linux).
+
+3️⃣ SSH into EC2 Instance
+ssh -i "your-key.pem" ec2-user@<Public-IP>
+
+4️⃣ Format and Mount the EBS Volume
+sudo su -
+lsblk                      # Check device (e.g., /dev/xvdb or /dev/nvme1n1)
+mkfs.ext4 /dev/xvdb        # Format the volume
+df -h                      # Check disk usage
+mkdir /data                # Create mount directory
+mount /dev/xvdb /data      # Mount the volume
+df -h                      # Confirm mount
+cd /data
+touch index.txt{1..20}     # Create sample files
+
+5️⃣ Make Mount Persistent (Survives Reboot)
+blkid                      # Get UUID of /dev/xvdb
+
+Example output:
+/dev/xvdb: UUID="abcd-1234" TYPE="ext4"
+
+vim /etc/fstab
+
+Add the following line to the bottom of the file:
+UUID=abcd-1234  /data  ext4  defaults,nofail  0  2
+
+Save and exit vim.
+
+reboot
+
+After reboot:
+sudo su -
+cd /data
+ls -l                     # Verify files exist
+
+🌍 Part 2: Copy EBS Snapshot to Another Region (Cross-Region Transfer)
+
+1️⃣ Create Snapshot from Data Volume
+- Go to Volumes → Actions → Create Snapshot
+- Add name/tag: e.g., data-snapshot-nvirginia
+
+2️⃣ Copy Snapshot to Another Region
+- Go to Snapshots → Select Snapshot → Actions → Copy
+  - Destination region: e.g., us-east-2 (Ohio)
+  - Name: data-snapshot-ohio
+
+3️⃣ Switch to Ohio Region and Create Volume from Snapshot
+- Switch to Ohio (us-east-2) region.
+- Go to Snapshots, verify the copied snapshot exists.
+- Click Actions → Create Volume:
+  - From snapshot: data-snapshot-ohio
+  - AZ: e.g., us-east-2a
+
+4️⃣ Launch a New EC2 Instance in Ohio
+- Launch EC2 instance (same steps as before).
+- Choose same AZ as volume (e.g., us-east-2a).
+
+5️⃣ Attach Volume to Ohio Instance
+- Go to Volumes → Select Volume → Attach Volume
+  - Choose instance.
+  - Device name: /dev/xvdb
+
+6️⃣ SSH into Ohio EC2 and Mount Volume
+ssh -i "your-ohio-key.pem" ec2-user@<Public-IP>
+sudo su -
+lsblk                        # Confirm volume appears (e.g., /dev/xvdb)
+mkdir /data
+mount /dev/xvdb /data
+cd /data
+ls -l                        # You should see index.txt1 to index.txt20

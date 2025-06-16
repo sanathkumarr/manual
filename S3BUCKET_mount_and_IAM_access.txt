@@ -1,0 +1,115 @@
+S3 BUCKET ACCESS & MOUNT ON EC2 USING IAM USER AND S3FS
+=======================================================
+
+STEP 1: Create IAM User and Grant Permissions
+---------------------------------------------
+1. Go to IAM → Users → Create User.
+2. User name: sanath → Next.
+3. Attach policies → Select: AmazonS3FullAccess.
+4. Click "Create User".
+5. Open the created user → Go to "Security Credentials" → Create Access Key.
+6. Select "Command Line Interface (CLI)" → Generate access key → Download CSV file.
+
+STEP 2: Create and Configure S3 Bucket
+--------------------------------------
+1. Go to S3 → Create bucket → Bucket name: [uniquename] (must be globally unique).
+2. Enable ACLs.
+3. Disable “Block all public access” (uncheck the box).
+4. Click "Create bucket".
+
+5. Upload a HTML file into the bucket.
+6. Select the uploaded file → Actions → Make public using ACL.
+7. Go to bucket → Permissions → Edit ACL:
+   - Grant public access: check "List" and "Read" for Everyone (public access).
+
+Repeat the same ACL settings for the uploaded file.
+
+STEP 3: Launch EC2 Instance and Connect
+---------------------------------------
+1. Launch an EC2 instance (Amazon Linux/Ubuntu/CentOS).
+2. SSH into the instance using terminal.
+
+STEP 4: Install AWS CLI
+------------------------
+
+curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+unzip awscliv2.zip
+sudo ./aws/install
+
+
+STEP 5: Configure AWS CLI
+--------------------------
+
+aws configure
+AWS Access Key ID [None]: <from CSV>
+AWS Secret Access Key [None]: <from CSV>
+Default region name [None]: us-east-1
+Default output format [None]: table
+
+
+STEP 6: Install Dependencies for s3fs
+-------------------------------------
+* For CentOS,Linux or Red Hat:
+
+sudo yum install automake fuse fuse-devel gcc-c++ git libcurl-devel libxml2-devel make openssl-devel
+
+
+* For Ubuntu or Debian:
+
+sudo apt-get install automake autotools-dev fuse g++ git libcurl4-gnutls-dev libfuse-dev libssl-dev libxml2-dev make pkg-config
+
+
+STEP 7: Clone and Install s3fs
+-------------------------------
+
+git clone https://github.com/s3fs-fuse/s3fs-fuse.git
+ll
+cd s3fs-fuse
+ll
+./autogen.sh
+./configure --prefix=/usr --with-openssl
+make
+sudo make install
+which s3fs
+
+
+STEP 8: Configure Credential File for s3fs
+------------------------------------------
+
+vim /etc/passwd-s3fs
+# Inside the file, add:
+<Your_Access_Key>:<Your_Secret_Key>
+
+
+Change permissions:
+
+sudo chmod 640 /etc/passwd-s3fs
+
+
+STEP 9: Mount S3 Bucket to EC2 Instance
+----------------------------------------
+
+
+s3fs <BUCKET-NAME> /mnt/s3 -o passwd_file=/etc/passwd-s3fs
+
+
+Verify:
+
+df -h
+cd /mnt
+ls -l
+
+you will see the files created in your bucket 
+now create the file in instance that will reflect in bucket
+
+touch dev.txt
+
+
+STEP 10: Enable Static Website Hosting on S3
+--------------------------------------------
+1. Go to your S3 bucket → Properties.
+2. Enable "Static website hosting".
+3. Use the “Endpoint URL” shown.
+4. Paste this URL in the browser to access the HTML page.
+
+=======================================================

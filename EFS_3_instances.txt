@@ -1,0 +1,94 @@
+EFS SETUP ACROSS 3 EC2 INSTANCES (Amazon Linux, Red Hat, Ubuntu)
+=================================================================
+
+STEP 1: Create 3 EC2 Instances
+------------------------------
+- Launch 3 instances using different AMIs:
+  - Amazon Linux
+  - Red Hat
+  - Ubuntu
+- Place each instance in a different subnet but within the same VPC.
+
+STEP 2: Create an EFS File System
+---------------------------------
+1. Go to AWS Management Console → EFS → Create File System.
+2. Name: myefs
+3. Select VPC: default VPC (or your custom VPC).
+4. Keep all other settings as default.
+5. Create the EFS file system.
+
+STEP 3: Configure Each Instance
+-------------------------------
+
+*** Amazon Linux ***
+
+sudo su -
+hostnamectl set-hostname linux.example.com
+bash
+yum install nfs-utils -y
+systemctl enable nfs-server
+systemctl start nfs-server
+systemctl restart nfs-server
+mkdir /root/efs
+
+
+*** Red Hat ***
+
+sudo su -
+hostnamectl set-hostname redhat.example.com
+bash
+yum install nfs-utils -y
+systemctl enable nfs-server
+systemctl start nfs-server
+systemctl restart nfs-server
+mkdir /root/efs
+
+
+*** Ubuntu ***
+
+sudo -i
+hostnamectl set-hostname ubantu.example.com
+bash
+apt install nfs-common -y
+systemctl status nfs-common.service
+mkdir /root/efs
+
+
+STEP 4: Mount EFS on Each Instance
+----------------------------------
+1. Go to AWS Console → EFS → File System → Attach.
+2. Select “Mount via IP” method.
+3. Choose the correct mount target subnet for each EC2 instance.
+4. Copy the mount command and run it on the respective EC2.
+
+Example Mount Command:
+
+sudo mount -t nfs -o nfsvers=4.1 <EFS-DNS>:/ /root/efs
+
+
+Verify Mount:
+
+df -h
+cd /root/efs
+touch index.txt{1..20}
+
+
+Repeat mount and verification steps on other instances.
+All 20 files should now be visible in `/root/efs` on all instances.
+
+STEP 5: Restrict Access for an Instance
+---------------------------------------
+1. Go to AWS Console → EFS → Network → Edit access points.
+2. Remove the subnet corresponding to the instance you want to restrict.
+3. On an allowed instance:
+
+touch /root/efs/testfile.txt
+
+4. On the restricted instance:
+
+cd /root/efs
+ls -l
+
+The restricted instance will not see the new `testfile.txt`, only the old files.
+
+==================================================

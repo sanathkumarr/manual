@@ -1,0 +1,125 @@
+AWS VPC SETUP: PUBLIC & PRIVATE SUBNETS WITH NAT GATEWAY
+=========================================================
+
+📘 STEP 1: CREATE A VPC
+-----------------------
+Go to AWS Console → VPC → Your VPCs → Create VPC.
+- Name tag: MyVPC
+- IPv4 CIDR block: 10.0.0.0/16
+- Leave other settings as default
+➡️ Click "Create VPC"
+
+🌐 STEP 2: CREATE SUBNETS
+-------------------------
+Go to VPC → Subnets → Create Subnet
+
+🔹 Public Subnet
+- Name: PublicSubnet
+- VPC: MyVPC
+- Availability Zone: us-east-1a
+- CIDR block: 10.0.1.0/24
+➡️ Click "Create subnet"
+
+🔹 Private Subnet
+- Name: PrivateSubnet
+- VPC: MyVPC
+- Availability Zone: us-east-1b
+- CIDR block: 10.0.2.0/24
+➡️ Click "Create subnet"
+
+🌍 STEP 3: CREATE AN INTERNET GATEWAY (IGW)
+------------------------------------------
+Go to VPC → Internet Gateways → Create Internet Gateway
+- Name: MyIGW
+➡️ Attach to VPC → Select MyVPC
+
+🔁 STEP 4: CONFIGURE ROUTE TABLES
+---------------------------------
+🔹 Public Route Table
+- VPC → Route Tables → Create Route Table
+- Name: PublicRouteTable
+- VPC: MyVPC
+- Go to Routes → Edit routes → Add:
+  - Destination: 0.0.0.0/0
+  - Target: Internet Gateway → MyIGW
+- Go to Subnet Associations → Associate with PublicSubnet
+
+📡 STEP 5: ENABLE AUTO PUBLIC IP FOR PUBLIC SUBNET
+--------------------------------------------------
+- Go to Subnets → PublicSubnet → Actions → Edit subnet settings
+- Enable: ✅ Auto-assign public IPv4 address
+➡️ Click Save
+
+🔐 STEP 6: CREATE EC2 INSTANCES & SECURITY GROUPS
+-------------------------------------------------
+🔹 Public EC2 Instance:
+- Name: public
+- Key pair: sanath.pem
+- Network: MyVPC
+- Subnet: PublicSubnet
+- Auto-assign Public IP: ENABLED
+- Security Group: vpc-pub
+- Inbound: SSH (22), HTTP (80) → Source: Your IP
+- Launch
+
+🔹 Private EC2 Instance:
+- Name: private
+- Key pair: sanath.pem
+- Network: MyVPC
+- Subnet: PrivateSubnet
+- Auto-assign Public IP: DISABLED
+- Security Group: vpc-prv
+- Inbound: SSH (22) from 10.0.1.0/24 or vpc-pub SG
+- Launch
+
+🌐 STEP 7: CREATE A NAT GATEWAY
+------------------------------
+🔹 Allocate Elastic IP:
+- Go to EC2 → Elastic IPs → Allocate
+
+🔹 Create NAT Gateway:
+- VPC → NAT Gateways → Create NAT Gateway
+- Subnet: PublicSubnet
+- Elastic IP: Use allocated one
+- Name: MyNATGateway
+➡️ Wait until available
+
+🔄 STEP 8: CONFIGURE PRIVATE ROUTE TABLE
+----------------------------------------
+- Create Route Table → Name: PrivateRouteTable → VPC: MyVPC
+- Routes → Edit:
+  - Destination: 0.0.0.0/0
+  - Target: NAT Gateway → MyNATGateway
+- Subnet Associations → Associate with PrivateSubnet
+
+📥 STEP 9: SETUP WEB SERVER ON PUBLIC INSTANCE
+----------------------------------------------
+SSH into Public Instance:
+
+sudo su -
+yum install httpd -y
+systemctl enable httpd
+systemctl start httpd
+cd /var/www/html
+vim index.html  # Add HTML content
+
+- Go to Security Group → Edit Inbound → Add HTTP (port 80)
+- Copy public IP → Open in browser → See index.html page
+
+🔒 STEP 10: CONNECT TO PRIVATE INSTANCE VIA PUBLIC BASTION
+-----------------------------------------------------------
+On your local machine:
+
+vim sanath.pem  # Paste private key content
+chmod 400 sanath.pem
+ssh -i sanath.pem ec2-user@<Public-Instance-IP>
+
+Then from Public instance SSH into Private:
+
+ssh ec2-user@<Private-Instance-IP>
+sudo su -
+ping google.com  # Should work due to NAT gateway
+
+
+✅ COMPLETE: Private instance has internet via NAT Gateway, public instance serves web content.
+=========================================================
