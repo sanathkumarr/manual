@@ -1,0 +1,60 @@
+                                                 terraform user inject
+#####################################################################################
+sudo su -
+hostnamectl set-hostname terra.example.com
+bash
+curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+unzip awscliv2.zip
+sudo ./aws/install
+/usr/local/bin/aws --version
+aws configure
+sudo yum install -y yum-utils shadow-utils
+sudo yum-config-manager --add-repo https://rpm.releases.hashicorp.com/AmazonLinux/hashicorp.repo
+sudo yum -y install terraform
+mkdir project
+cd project
+vim terra.tf
+#############################################################################################
+provider "aws" {
+  region = "us-east-1"
+}
+
+resource "aws_instance" "web" {
+  ami                    = "ami-05ffe3c48a9991133"
+  instance_type          = "t2.micro"
+  key_name               = "personal"
+  availability_zone      = "us-east-1a"
+  vpc_security_group_ids = [data.aws_security_group.previous-sg.id]
+  user_data              = <<-EOF
+        #!/bin/bash
+        sudo yum install httpd -y
+        sudo systemctl start httpd
+        sudo systemctl enable httpd
+        echo "<h1>sample webserver using terraform</h1>" | sudo tee /var/www/html/index.html
+  EOF
+  tags = {
+    Name     = "db-World"
+    Stage    = "stage-base"
+    Location = "delhi"
+  }
+}
+data "aws_security_group" "previous-sg" {
+  id = "sg-02743a2383b035a0d" #existing security group id
+}
+#################################################################################################
+terraform init
+terraform fmt
+terraform validate
+terraform plan
+terraform apply
+
+Now paste public ip of newly created instance in browser 
+go to newly created instance using terraform connect it through ssh
+
+rpmquery httpd
+cd /var/www/html
+ll
+cat index.html
+###################################################################################################################################################################
+###################################################################################################################################################################
+                                                                
