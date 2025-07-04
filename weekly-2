@@ -236,4 +236,95 @@ terraform apply
 sudo su -
 hostnamectl set-hostname controller.example.com
 bash
+yum install ansible*
+ssh-keygen
+cat .ssh/id_rsa.pub
 
+copy the key and paste it in node instance authourized_keys file
+
+another way is editing sshd_config file and restart sshd then ssh-copy-id root@node-public-ip
+
+cd /etc/ansible
+vim hosts
+
+##############
+[web]
+worker ansible_host=172.31.77.239 ansible_user=root
+###############
+
+ansible -i hosts all -m ping
+vim apache.yaml
+
+##################
+---
+- name: Install Apache Web Server on Worker Node
+  hosts: web
+  become: yes
+  tasks:
+    - name: Install httpd
+      yum:
+        name: httpd
+        state: present
+
+    - name: Start and enable Apache
+      service:
+        name: httpd
+        state: started
+        enabled: yes
+
+    - name: Create simple homepage
+      copy:
+        dest: /var/www/html/index.html
+        content: "<h1>Apache Installed by Ansible on EC2</h1>"
+########################
+
+ansible-playbook apache.yaml --syntax-check
+ansible-playbook apache.yaml -C
+ansible-playbook apache.yaml
+
+paste node public ip in web browser url 
+http://public_ip:80
+####################
+in node instance 
+sudo su -
+cd .ssh
+vim authorized_keys
+paste controller public key
+
+########################################################################################
+########################################################################################
+                                              docker nginx
+########################################################################################
+yum install docker*
+systemctl enable docker
+systemctl start docker
+docker pull nginx
+docker run -itd --name sanath -p 8080:80 nginx
+docker ps -a
+
+paste http://public_ip:8080
+in browser it will open default nginx page
+
+
+if not 
+docker start sanath                   [container_name]
+docker exec -it sanath bash
+
+now check in browser again 
+
+if you want to edit default page 
+ls
+cd /usr
+ls
+cd share
+ls
+cd nginx
+ls
+cat html
+cd html
+ls
+cat index.html
+echo "this my server" > index.html
+cat index.html
+
+docker attach name/id
