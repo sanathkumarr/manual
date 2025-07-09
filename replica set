@@ -87,6 +87,50 @@ resources:
 
  3. BestEffort
 no resources defined
+############################################################################################################################################3
 
+deployment.yaml 
+--------------------
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: myapp-deployment
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: myapp
+  template:
+    metadata:
+      labels:
+        app: myapp
+    spec:
+      containers:
+      - name: myapp-container
+        image: nginx
+        ports:
+        - containerPort: 80
+----------------------------
 
-
+| Command                                              | Description                 |
+| ---------------------------------------------------- | --------------------------- |
+| `kubectl apply -f deployment.yaml`                   | Create or update deployment |
+| `kubectl get deployments`                            | View deployments            |
+| `kubectl rollout status deployment myapp-deployment` | Check rollout progress      |
+| `kubectl rollout undo deployment myapp-deployment`   | Rollback update             |
+##########################################3
+serice.yaml
+-----------------
+apiVersion: v1
+kind: Service
+metadata:
+  name: myapp-service
+spec:
+  selector:
+    app: myapp
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 80
+  type: ClusterIP                                  or     nodePort: 30080 
+------------------------
