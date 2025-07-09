@@ -17,3 +17,76 @@ spec:
         image: nginx:1.21
         ports:
         - containerPort: 80
+
+
+
+#################################################################################################################
+kubectl get rs                                ---------------List ReplicaSets
+kubectl describe rs <rs-name>	                ---------------Detailed info about a ReplicaSet
+kubectl get pods                              ---------------List pods managed by RS
+kubectl delete rs <rs-name>	                  ---------------Deletes the RS (pods remain unless you delete with --cascade=orphan)
+#################################################################################################################
+horizantal scaling ----Adding or removing instances of a component (like pods, servers, VMs) to handle load
+-------ReplicaSets / Deployments help with manual horizontal scaling:-------
+
+kubectl scale deployment myapp --replicas=5
+-------------------------------------------------------------------------------------------------------------------------
+vertical scaling -----Increasing or decreasing the resources (CPU, memory, etc.) of a single instance to make it more powerful.
+
+resources:
+  requests:
+    cpu: "500m"
+    memory: "512Mi"
+  limits:
+    cpu: "1"
+    memory: "1Gi"
+-------------------------------------------------------------------------------------------------------------------------
+auto scaling ---Automatically adjusting the number of pods or resources
+
+kubectl autoscale deployment myapp --cpu-percent=70 --min=2 --max=10
+
+
+kubectl top pod  # Requires metrics-server
+
+--------------------------------------------------------------------
+What is Quality of Service (QoS) in Kubernetes?
+QoS Class defines how Kubernetes schedules and manages pods based on their resource requests and limits.
+
+There are 3 QoS Classes:
+| QoS Class      | Description                                                  |
+| -------------- | ------------------------------------------------------------ |
+| **Guaranteed** | Highest priority. Pod is guaranteed its requested resources. |
+| **Burstable**  | Medium priority. Some requests/limits are defined.           |
+| **BestEffort** | Lowest priority. No resource requests or limits defined.     |
+
+1. Guaranteed:
+| Condition                                                                                 |
+| ----------------------------------------------------------------------------------------- |
+| All containers in the pod have **equal and non-zero CPU/memory `requests` and `limits`**. |
+
+resources:
+  requests:
+    cpu: "500m"
+    memory: "256Mi"
+  limits:
+    cpu: "500m"
+    memory: "256Mi"
+
+2. Burstable
+| Condition                                                                                               |
+| ------------------------------------------------------------------------------------------------------- |
+| At least one container has **requests**, and at least one has **limits**, but they don’t match exactly. |
+
+resources:
+  requests:
+    cpu: "200m"
+    memory: "128Mi"
+  limits:
+    cpu: "500m"
+    memory: "256Mi"
+
+ 3. BestEffort
+no resources defined
+
+
+
