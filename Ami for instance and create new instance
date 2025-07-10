@@ -1,0 +1,23 @@
+provider "aws" {
+  region = "us-east-1"
+}
+
+resource "aws_ami_from_instance" "my_image" {
+  name               = "terra-image"
+  source_instance_id = "i-08378f82f606e2542"
+
+  tags = {
+    Name = "Hello-world"
+  }
+}
+
+resource "aws_instance" "new_instance" {
+  ami           = aws_ami_from_instance.my_image.id
+  instance_type = "t2.micro"
+  subnet_id     = "subnet-xxxxxxxx"   # Replace with actual subnet ID
+  key_name      = "your-key-pair"     # Replace with actual key
+
+  tags = {
+    Name = "New-Instance-From-AMI"
+  }
+}
