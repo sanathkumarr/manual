@@ -1,22 +1,33 @@
+# .gitlab-ci.yml demonstrating: Variables, Stages, Script, Artifacts, Only/Except, Rules, Needs, Include, Environments, Templates
+
+include:
+  # Templates (local and remote examples)
+  - local: 'ci/templates/node-common.yml'
+  - remote: 'https://gitlab.com/example/shared-ci-templates/-/raw/main/nodejs.yml'
+
 stages:
   - install
   - build
   - test
   - deploy
 
-# global variables (optional)
+# Global variables
 variables:
   CI: "true"
   NODE_ENV: "production"
+  # Example template variable that included templates might consume
+  DEFAULT_TIMEOUT: "30m"
 
-# INSTALL
+####################
+# INSTALL (uses Only)
+####################
 install:
   stage: install
   image: node:20-alpine
   before_script:
     - node -v && npm -v
   script:
-    - npm ci --no-audit --no-fund
+    - npm install --no-audit --no-fund
     - npx update-browserslist-db@latest || true
   artifacts:
     paths:
@@ -25,16 +36,22 @@ install:
   only:
     - main
 
-# BUILD
+####################
+# BUILD (uses Needs + per-job Variables + Script + Artifacts)
+####################
 build:
   stage: build
   image: node:20-alpine
   needs:
-    - install
+    - job: install
+      artifacts: true
+  variables:
+    # Job-specific variable (demonstrates per-job variables)
+    DISABLE_ESLINT_PLUGIN: "true"
   before_script:
     - node -v && npm -v
   script:
-    - npm ci --no-audit --no-fund
+    - npm install --no-audit --no-fund
     - npx update-browserslist-db@latest || true
     - npm run build
     - DISABLE_ESLINT_PLUGIN=true npm run build
@@ -43,7 +60,9 @@ build:
       - build/
     expire_in: 1 day
 
-# TEST
+####################
+# TEST (uses Rules + Artifacts + Needs)
+####################
 test:
   stage: test
   image: node:20-alpine
@@ -54,24 +73,35 @@ test:
     CI: "true"
   before_script:
     - node -v && npm -v
+  # Rules used here to demonstrate flexible conditional execution:
+  rules:
+    # Run always for Merge Requests
+    - if: '$CI_MERGE_REQUEST_ID'
+      when: always
+    # Run on branches except main
+    - if: '$CI_COMMIT_BRANCH && $CI_COMMIT_BRANCH != "main"'
+      when: always
+    # Default: don't run on main via rules (explicit deny)
+    - if: '$CI_COMMIT_BRANCH == "main"'
+      when: never
   script:
-    - npm ci --no-audit --no-fund
+    - npm install --no-audit --no-fund
     - npm test -- --ci --watchAll=false --coverage
   artifacts:
     when: always
     paths:
       - coverage/
     expire_in: 1 week
-  # example: do not run on main branch (if desired)
-  except:
-    - main
 
-# DEPLOY (GitLab Pages)
+####################
+# PAGES / DEPLOY (uses Only, Environment, Artifacts)
+####################
 pages:
   stage: deploy
   image: node:20-alpine
   needs:
-    - build
+    - job: build
+      artifacts: true
   before_script:
     - node -v && npm -v
   script:
@@ -87,3 +117,9 @@ pages:
     url: "https://${CI_PROJECT_NAMESPACE}.gitlab.io/${CI_PROJECT_NAME}"
   only:
     - main
+
+####################
+# OPTIONAL: Example template job (showing Templates usage)
+# This job demonstrates how an included template file may define jobs which you can override or extend.
+####################
+# Note: actual template file 'ci/templates/node-common.yml' should exist in repo.
