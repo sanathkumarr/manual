@@ -1,0 +1,89 @@
+stages:
+  - install
+  - build
+  - test
+  - deploy
+
+# global variables (optional)
+variables:
+  CI: "true"
+  NODE_ENV: "production"
+
+# INSTALL
+install:
+  stage: install
+  image: node:20-alpine
+  before_script:
+    - node -v && npm -v
+  script:
+    - npm ci --no-audit --no-fund
+    - npx update-browserslist-db@latest || true
+  artifacts:
+    paths:
+      - node_modules/
+    expire_in: 1h
+  only:
+    - main
+
+# BUILD
+build:
+  stage: build
+  image: node:20-alpine
+  needs:
+    - install
+  before_script:
+    - node -v && npm -v
+  script:
+    - npm ci --no-audit --no-fund
+    - npx update-browserslist-db@latest || true
+    - npm run build
+    - DISABLE_ESLINT_PLUGIN=true npm run build
+  artifacts:
+    paths:
+      - build/
+    expire_in: 1 day
+
+# TEST
+test:
+  stage: test
+  image: node:20-alpine
+  needs:
+    - job: install
+      artifacts: true
+  variables:
+    CI: "true"
+  before_script:
+    - node -v && npm -v
+  script:
+    - npm ci --no-audit --no-fund
+    - npm test -- --ci --watchAll=false --coverage
+  artifacts:
+    when: always
+    paths:
+      - coverage/
+    expire_in: 1 week
+  # example: do not run on main branch (if desired)
+  except:
+    - main
+
+# DEPLOY (GitLab Pages)
+pages:
+  stage: deploy
+  image: node:20-alpine
+  needs:
+    - build
+  before_script:
+    - node -v && npm -v
+  script:
+    - rm -rf public && mkdir -p public
+    - cp -r build/* public/
+    - cp public/index.html public/404.html
+    - touch public/.nojekyll
+  artifacts:
+    paths:
+      - public
+  environment:
+    name: production
+    url: "https://${CI_PROJECT_NAMESPACE}.gitlab.io/${CI_PROJECT_NAME}"
+  only:
+    - main
